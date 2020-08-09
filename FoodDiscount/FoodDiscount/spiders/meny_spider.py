@@ -1,5 +1,6 @@
 
 import scrapy
+from selenium import webdriver
 
 
 class MenySpider(scrapy.Spider):
@@ -8,10 +9,23 @@ class MenySpider(scrapy.Spider):
     start_urls = ['https://meny.no/Varer/Tilbud/']
 
     def start_request(self):
+
         for url in self.start_urls:
             yield scrapy.Request(url= url, callback= self.parse)
 
     def parse(self, response):
+
+        # Load all products
+        driver = webdriver.Firefox()
+        driver.get('https://meny.no/Varer/Tilbud/')
+        while True:
+            try:
+                button = driver.find_element_by_xpath('//*[@id="cw-loadmore-btn"]')
+                button.click()
+            except:
+                break
+        driver.close()
+
         all_items = response.xpath('//*[@id="cw-products-promotionpage"]/ul/li')
         for item in all_items:
             name = item.css('h3 a.cw-product__link::text').get()
