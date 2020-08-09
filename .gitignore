@@ -123,3 +123,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/.idea/.gitignore
+/FoodDiscount/data.csv
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/vcs.xml
+/.idea/Web scraping.iml
