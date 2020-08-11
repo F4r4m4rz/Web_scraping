@@ -9,16 +9,17 @@ class MenySpider(scrapy.Spider):
     name = 'meny'
     start_urls = ['https://meny.no/Varer/Tilbud/']
     driver = None
+    DATA = []
 
     def __init__(self):
         self.driver = webdriver.Firefox()
         self.driver.get(self.start_urls[0])
-        #while True:
-        #    try:
-        #        button = self.driver.find_element_by_xpath('//*[@id="cw-loadmore-btn"]')
-        #        button.click()
-        #    except:
-        #        break
+        while True:
+            try:
+                button = self.driver.find_element_by_xpath('//*[@id="cw-loadmore-btn"]')
+                button.click()
+            except:
+                break
 
     def parse(self, response):
         all_items = self.driver.find_elements_by_xpath('//*[@id="cw-products-promotionpage"]/ul/li')
@@ -46,9 +47,12 @@ class MenySpider(scrapy.Spider):
                 old_fee = old_fee_raw.text.replace('FØR KR', '').replace(',', '.').strip()
             except:
                 new_fee = '-'
-                old_fee_main = product_details.find_element_by_css_selector('span > span.cw-product__price__main')
-                old_fee_cent = product_details.find_element_by_css_selector('span>sup.cw-product__price__cents')
-                old_fee = old_fee_main.text + '.' + old_fee_cent.text
+                old_fee_main = product_details.find_element_by_css_selector('span > span.cw-product__price__main').text
+                try:
+                    old_fee_cent = product_details.find_element_by_css_selector('span>sup.cw-product__price__cents').text
+                except:
+                    old_fee_cent = '00'
+                old_fee = old_fee_main + '.' + old_fee_cent
 
             # deal
             try:
@@ -68,6 +72,7 @@ class MenySpider(scrapy.Spider):
                 'deal': deal,
                 'link': link,
             }
+            self.DATA.append(data)
             yield data
         self.send_email()
 
@@ -95,12 +100,48 @@ class MenySpider(scrapy.Spider):
         How are you?"""
 
         part1 = MIMEText(text, "plain")
+        with open("template.txt") as file:
+            html = self.make_html(file.read())
+
+        part2 = MIMEText(html, "html")
         message.attach(part1)
+        message.attach(part2)
 
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-        with smtplib.SMTP_SSL(host='smtp-mail.outlook.com', port=587) as server:
-
+        with smtplib.SMTP(host='smtp-mail.outlook.com', port=587) as server:
+            server.starttls()
             server.login(sender_email, password)
             server.sendmail(
                 sender_email, receiver_email, message.as_string()
             )
+
+    def make_html(self, template : str):
+        body = """<table style= "width: 100%; border: 1px solid black;">
+            <tr>
+                <th style="border: 1px solid black;">No</th> 
+                <th style="border: 1px solid black;">Name</th>
+                <th style="border: 1px solid black;">Old fee</th>
+                <th style="border: 1px solid black;">New fee</th>
+                <th style="border: 1px solid black;">Deal</th>
+                <th style="border: 1px solid black;">link</th>
+            </tr>
+            #ROWS#
+        </table>"""
+        rows = ""
+        no = 1
+        for a in self.DATA:
+            row=f"""
+            <tr>
+                <td style="border: 1px solid black;">{no}</td>
+                <td style="border: 1px solid black;">{a["name"]}</td>
+                <td style="border: 1px solid black;">{a["old fee"]}</td>
+                <td style="border: 1px solid black;">{a["new fee"]}</td>
+                <td style="border: 1px solid black;">{a["deal"]}</td>
+                <td style="border: 1px solid black;"><a>{a["link"]}</a></td>
+            </tr>
+            """
+            rows = rows + row
+            no += 1
+
+        body = body.replace("#ROWS#", rows)
+        return template.replace("#Body#", body)
+
