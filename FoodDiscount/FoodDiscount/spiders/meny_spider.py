@@ -4,6 +4,14 @@ import scrapy
 from selenium import webdriver
 
 
+def fee_diff(item):
+    try:
+        dif = float(item['old fee'].replace(',','')) - float(item['new fee'].replace(',',''))
+        return dif
+    except:
+        return 0
+
+
 class MenySpider(scrapy.Spider):
 
     name = 'meny'
@@ -74,6 +82,7 @@ class MenySpider(scrapy.Spider):
             }
             self.DATA.append(data)
             yield data
+        self.analyze_data()
         self.send_email()
 
     def __del__(self):
@@ -86,7 +95,7 @@ class MenySpider(scrapy.Spider):
         from email.mime.multipart import MIMEMultipart
 
         sender_email = "faramarz.bodaghi@outlook.com"
-        receiver_email = "akram.yousefi@gmail.com"
+        receiver_email = "faramarz.bodaghi@outlook.com"
         with open('pass.txt') as file:
             password = file.readline().strip()
 
@@ -145,3 +154,9 @@ class MenySpider(scrapy.Spider):
         body = body.replace("#ROWS#", rows)
         return template.replace("#Body#", body)
 
+    def analyze_data(self):
+        data = self.DATA.copy()
+        self.DATA.clear()
+        data = sorted(data, key=lambda i: fee_diff(i), reverse=True)
+        for item in data:
+            self.DATA.append(item)
